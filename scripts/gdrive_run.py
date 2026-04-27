@@ -7,7 +7,7 @@ import sys
 CREDS_FILE = '/root/.claude/gdrive-credentials.json'
 TOKEN_FILE = '/root/.claude/gdrive-token.json'
 
-CODE = '4/1AeoWuM_mOIzqFZtHeq0xyeRRQycow-6kSDXagWzOyTulxinhU7ulbxsB7pk'
+CODE = '4/1AeoWuM-B6PDIriI07a1f_vvDX8INc0qT_0soHCI9kP4v-fmQCVm9qnuRT-o'
 
 def exchange_token():
     from google_auth_oauthlib.flow import Flow
@@ -18,7 +18,11 @@ def exchange_token():
         client_config = raw
     else:
         client_config = {'installed': {**raw, 'redirect_uris': ['urn:ietf:wg:oauth:2.0:oob']}}
-    flow = Flow.from_client_config(client_config, scopes=SCOPES, redirect_uri='urn:ietf:wg:oauth:2.0:oob')
+    flow = Flow.from_client_config(
+        client_config, scopes=SCOPES,
+        redirect_uri='urn:ietf:wg:oauth:2.0:oob',
+        autogenerate_code_verifier=False
+    )
     flow.fetch_token(code=CODE)
     creds = flow.credentials
     with open(TOKEN_FILE, 'w') as f:
@@ -63,7 +67,11 @@ def main():
     else:
         creds = exchange_token()
 
-    service = build('drive', 'v3', credentials=creds)
+    import httplib2
+    http = httplib2.Http(disable_ssl_certificate_validation=True)
+    from google_auth_httplib2 import AuthorizedHttp
+    authed_http = AuthorizedHttp(creds, http=http)
+    service = build('drive', 'v3', http=authed_http)
 
     # Create or find folder
     print(f"\nCreando carpeta '{FOLDER_NAME}'...")
